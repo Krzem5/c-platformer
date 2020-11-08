@@ -3,7 +3,10 @@
 
 
 
-LevelLayout load_level(const char* nm);
+LevelLayout load_level(const char* nm){
+	// fopen_s
+	// errno==ENOENT if err
+}
 
 
 
