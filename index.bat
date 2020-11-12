@@ -18,6 +18,8 @@ del *.pdb
 del *.exp
 del *.ilk
 del *.idb
+del *.h
+xcopy ..\rsrc\levels .\rsrc\levels\
 cls
 platformer.exe
 :end
