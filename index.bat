@@ -20,6 +20,7 @@ del *.ilk
 del *.idb
 del *.h
 xcopy ..\rsrc\levels .\rsrc\levels\
+xcopy ..\rsrc\mdl .\rsrc\mdl\
 cls
 platformer.exe
 :end

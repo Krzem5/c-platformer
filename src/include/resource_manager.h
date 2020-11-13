@@ -1,27 +1,25 @@
 #ifndef __RESOURCE_MANAGER_H__
 #define __RESOURCE_MANAGER_H__
 #include <engine.h>
+#include <renderer.h>
 #define COBJMACROS
 #include <d3d11_1.h>
 
 
 
+#define ASSET_BASE_FILE_PATH "rsrc/mdl/"
+
+
+
 typedef struct _BLOCK_MODEL* BlockModel;
-typedef struct _BLOCK_MODEL* AssetID;
-
-
-
-struct _BLOCK_MODEL_PART{
-	size_t ib_l;
-	ID3D11Buffer* ib;
-	ID3D11Buffer* vb;
-};
+typedef BlockModel AssetID;
 
 
 
 struct _BLOCK_MODEL{
-	uint8_t l;
-	struct _BLOCK_MODEL_PART* e;
+	uint32_t ib_l;
+	ID3D11Buffer* ib;
+	ID3D11Buffer* vb;
 };
 
 

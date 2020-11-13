@@ -1,4 +1,4 @@
 ### Github File Push Ignore
 
 build
-rsrc/levels/_gen.py
+rsrc/*/_gen.py

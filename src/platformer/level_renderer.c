@@ -108,6 +108,6 @@ void update_level(Level l,double dt){
 void draw_level(Level l){
 	assert(l!=NULL);
 	for (uint32_t i=0;i<l->bl;i++){
-		resource_manager_draw_asset((l->b+i)->a);
+		resource_manager_draw_asset((l->b+i)->a,raw_matrix(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1));
 	}
 }
