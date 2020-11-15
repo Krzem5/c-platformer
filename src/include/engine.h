@@ -1,25 +1,33 @@
 #ifndef __ENGINE_H__
 #define __ENGINE_H__
-#include <stdint.h>
-#include <limits.h>
-#include <signal.h>
+#include <common.h>
+#include <renderer.h>
 
 
 
-#define bool _Bool
-#define false 0
-#define true 1
-#ifdef NULL
-#undef NULL
-#endif
-#define NULL ((void*)0)
-#define assert(x) \
-	do{ \
-		if (!(x)){ \
-			printf("%s:%i (%s): %s: Assertion Failed\n",__FILE__,__LINE__,__func__,#x); \
-			raise(SIGABRT); \
-		} \
-	} while (0)
+typedef struct _CBUFFER_LAYOUT CBufferLayout;
+typedef struct _CBUFFER_EXTRA_LAYOUT CBufferExtraLayout;
+
+
+
+struct _CBUFFER_LAYOUT{
+	RawMatrix pm;
+};
+
+
+
+struct _CBUFFER_EXTRA_LAYOUT{
+	RawMatrix wm;
+};
+
+
+
+extern ID3D11VertexShader* cl_vs;
+extern ID3D11PixelShader* cl_ps;
+extern ID3D11InputLayout* cl_vl;
+extern ID3D11VertexShader* tx_vs;
+extern ID3D11PixelShader* tx_ps;
+extern ID3D11InputLayout* tx_vl;
 
 
 

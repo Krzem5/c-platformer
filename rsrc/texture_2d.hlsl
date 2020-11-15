@@ -3,8 +3,13 @@
 
 
 cbuffer core:register(b0){
-	matrix cm;
 	matrix pm;
+};
+
+
+
+cbuffer extra:register(b1){
+	matrix wm;
 };
 
 
@@ -21,9 +26,9 @@ struct VS_OUT{
 
 
 
-VS_OUT texture_3d_vs(float4 p:POSITION,float2 t:TEXCOORD){
+VS_OUT texture_2d_vs(float4 p:POSITION,float2 t:TEXCOORD){
 	VS_OUT o={
-		mul(mul(p,cm),pm),
+		mul(mul(p,wm),pm),
 		t
 	};
 	return o;
@@ -31,6 +36,6 @@ VS_OUT texture_3d_vs(float4 p:POSITION,float2 t:TEXCOORD){
 
 
 
-float4 texture_3d_ps(VS_OUT vo):SV_TARGET{
+float4 texture_2d_ps(VS_OUT vo):SV_TARGET{
 	return tx.Sample(ss,vo.t);
 }

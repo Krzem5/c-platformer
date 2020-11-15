@@ -1,7 +1,7 @@
 #ifndef __RENDERER_H__
 #define __RENDERER_H__
 #define COBJMACROS
-#include <engine.h>
+#include <common.h>
 #include <windows.h>
 #include <d3d11_1.h>
 
