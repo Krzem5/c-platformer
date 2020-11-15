@@ -1,4 +1,5 @@
 ### Github File Push Ignore
 
 build
-rsrc/*/_gen.py
+rsrc/*.dds
+*.py

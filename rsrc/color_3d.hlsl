@@ -3,7 +3,6 @@
 
 
 cbuffer core:register(b0){
-	float4 cd;
 	matrix cm;
 	matrix pm;
 };
@@ -17,7 +16,7 @@ struct VS_OUT{
 
 
 
-VS_OUT color_3d_vs(float4 p:SV_POSITION,float4 c:COLOR){
+VS_OUT color_3d_vs(float4 p:POSITION,float4 c:COLOR){
 	VS_OUT o={
 		mul(mul(p,cm),pm),
 		c

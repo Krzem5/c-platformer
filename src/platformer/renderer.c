@@ -727,22 +727,21 @@ bool is_pressed(uint32_t k){
 
 
 
-ID3D11VertexShader* load_vertex_shader(const BYTE* dt,size_t ln,D3D11_INPUT_ELEMENT_DESC* il,uint16_t ill){
-	ID3D11VertexShader* o=NULL;
-	HRESULT hr=ID3D11Device_CreateVertexShader(renderer_d3_d,dt,ln,NULL,&o);
+ID3D11VertexShader* load_vertex_shader(const BYTE* dt,size_t ln,D3D11_INPUT_ELEMENT_DESC* il,uint16_t ill,ID3D11InputLayout** o){
+	ID3D11VertexShader* vo=NULL;
+	HRESULT hr=ID3D11Device_CreateVertexShader(renderer_d3_d,dt,ln,NULL,&vo);
 	if (FAILED(hr)){
 		printf("Error creating VS\n");
 		return NULL;
 	}
-	ID3D11InputLayout* vl=NULL;
-	hr=ID3D11Device_CreateInputLayout(renderer_d3_d,il,ill,dt,ln,&vl);
+	*o=NULL;
+	hr=ID3D11Device_CreateInputLayout(renderer_d3_d,il,ill,dt,ln,o);
 	if (FAILED(hr)){
 		printf("Error creating VS Input Layout\n");
 		assert(0);
 		return NULL;
 	}
-	ID3D11DeviceContext_IASetInputLayout(renderer_d3_dc,vl);
-	return o;
+	return vo;
 }
 
 

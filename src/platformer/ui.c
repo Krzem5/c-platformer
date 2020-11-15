@@ -50,6 +50,7 @@
 
 ID3D11VertexShader* ui_vs=NULL;
 ID3D11PixelShader* ui_ps=NULL;
+ID3D11InputLayout* ui_vl=NULL;
 float* tb_vl=NULL;
 float* tb_lvl=NULL;
 ID3D11Buffer* tb_ib=NULL;
@@ -556,7 +557,7 @@ void recalc_topbar(void){
 void init_ui(void){
 	D3D11_INPUT_ELEMENT_DESC il[]={
 		{
-			"SV_POSITION",
+			"POSITION",
 			0,
 			DXGI_FORMAT_R32G32B32A32_FLOAT,
 			0,
@@ -572,7 +573,7 @@ void init_ui(void){
 			D3D11_INPUT_PER_VERTEX_DATA
 		}
 	};
-	ui_vs=load_vertex_shader(g_color_2d_vs,sizeof(g_color_2d_vs),il,sizeof(il)/sizeof(D3D11_INPUT_ELEMENT_DESC));
+	ui_vs=load_vertex_shader(g_color_2d_vs,sizeof(g_color_2d_vs),il,sizeof(il)/sizeof(D3D11_INPUT_ELEMENT_DESC),&ui_vl);
 	ui_ps=load_pixel_shader(g_color_2d_ps,sizeof(g_color_2d_ps));
 	ui_cb=create_constant_buffer(sizeof(struct CBufferLayout));
 	recalc_topbar();
@@ -609,6 +610,7 @@ void draw_ui(void){
 	}
 	unsigned int off=0;
 	unsigned int st=8*sizeof(float);
+	ID3D11DeviceContext_IASetInputLayout(renderer_d3_dc,ui_vl);
 	ID3D11DeviceContext_IASetVertexBuffers(renderer_d3_dc,0,1,&tb_vb,&st,&off);
 	ID3D11DeviceContext_IASetIndexBuffer(renderer_d3_dc,tb_ib,DXGI_FORMAT_R16_UINT,0);
 	ID3D11DeviceContext_IASetPrimitiveTopology(renderer_d3_dc,D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);

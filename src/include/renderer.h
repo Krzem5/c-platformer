@@ -154,7 +154,7 @@ bool is_pressed(uint32_t k);
 
 
 
-ID3D11VertexShader* load_vertex_shader(const BYTE* dt,size_t ln,D3D11_INPUT_ELEMENT_DESC* il,uint16_t ill);
+ID3D11VertexShader* load_vertex_shader(const BYTE* dt,size_t ln,D3D11_INPUT_ELEMENT_DESC* il,uint16_t ill,ID3D11InputLayout** o);
 
 
 

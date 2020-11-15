@@ -15,7 +15,7 @@ struct VS_OUT{
 
 
 
-VS_OUT color_2d_vs(float4 p:SV_POSITION,float4 c:COLOR){
+VS_OUT color_2d_vs(float4 p:POSITION,float4 c:COLOR){
 	VS_OUT o={
 		mul(p,pm),
 		c
