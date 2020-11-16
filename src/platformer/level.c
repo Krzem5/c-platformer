@@ -9,15 +9,21 @@
 #define TOTAL_Y_BLOCKS 20
 #define TEXTURE_WIDTH 630
 #define TEXTURE_HEIGHT 630
-#define TEXTURE_BLOCK_SIZE 21
-#define TEXTURE_BLOCK_X0(t) (((float)(t%(TEXTURE_WIDTH/TEXTURE_BLOCK_SIZE)))*TEXTURE_BLOCK_SIZE/TEXTURE_WIDTH)
-#define TEXTURE_BLOCK_X1(t) (TEXTURE_BLOCK_X0(t)+(float)TEXTURE_BLOCK_SIZE/TEXTURE_WIDTH)
-#define TEXTURE_BLOCK_Y0(t) (((float)(t/(TEXTURE_WIDTH/TEXTURE_BLOCK_SIZE)))*TEXTURE_BLOCK_SIZE/TEXTURE_HEIGHT)
-#define TEXTURE_BLOCK_Y1(t) (TEXTURE_BLOCK_Y0(t)+(float)TEXTURE_BLOCK_SIZE/TEXTURE_WIDTH)
-#define WIDTH_SCALE ((float)renderer_ww/TOTAL_X_BLOCKS)
-#define WIDTH_PAD ((renderer_ww-WIDTH_SCALE*TOTAL_X_BLOCKS)/2)
-#define HEIGHT_SCALE ((float)renderer_wh/TOTAL_Y_BLOCKS)
-#define HEIGHT_PAD ((renderer_wh-HEIGHT_SCALE*TOTAL_Y_BLOCKS)/2)
+#define TEXTURE_SPRITE_SIZE 21
+#define TEXTURE_PLAYER_WIDTH 21
+#define TEXTURE_PLAYER_HEIGHT TEXTURE_SPRITE_SIZE
+#define PLAYER_TEXTURE_OFFSET 19
+#define TEXTURE_BLOCK_X0(t) (((float)(t%(TEXTURE_WIDTH/TEXTURE_SPRITE_SIZE)))*TEXTURE_SPRITE_SIZE/TEXTURE_WIDTH)
+#define TEXTURE_BLOCK_X1(t) (TEXTURE_BLOCK_X0(t)+(float)TEXTURE_SPRITE_SIZE/TEXTURE_WIDTH)
+#define TEXTURE_BLOCK_Y0(t) (((float)(t/(TEXTURE_WIDTH/TEXTURE_SPRITE_SIZE)))*TEXTURE_SPRITE_SIZE/TEXTURE_HEIGHT)
+#define TEXTURE_BLOCK_Y1(t) (TEXTURE_BLOCK_Y0(t)+(float)TEXTURE_SPRITE_SIZE/TEXTURE_HEIGHT)
+#define SIZE_SCALE (((float)renderer_ww/TOTAL_X_BLOCKS)<((float)renderer_wh/TOTAL_Y_BLOCKS)?(float)renderer_ww/TOTAL_X_BLOCKS:(float)renderer_wh/TOTAL_Y_BLOCKS)
+#define WIDTH_PAD ((renderer_ww-SIZE_SCALE*TOTAL_X_BLOCKS)/2)
+#define HEIGHT_PAD ((renderer_wh-SIZE_SCALE*TOTAL_Y_BLOCKS)/2)
+#define TEXTURE_PLAYER_X0(t) (((float)t+PLAYER_TEXTURE_OFFSET)*TEXTURE_SPRITE_SIZE/TEXTURE_WIDTH)
+#define TEXTURE_PLAYER_X1(t) (TEXTURE_PLAYER_X0(t)+(float)TEXTURE_PLAYER_WIDTH/TEXTURE_WIDTH)
+#define TEXTURE_PLAYER_Y0(t) (0)
+#define TEXTURE_PLAYER_Y1(t) (TEXTURE_PLAYER_Y0(t)+(float)TEXTURE_PLAYER_HEIGHT/TEXTURE_HEIGHT)
 
 
 
@@ -70,11 +76,59 @@ Level load_level(char* nm){
 		o->cy=0;
 	}
 	o->p=malloc(sizeof(struct _PLAYER));
-	o->p->x=0;
-	o->p->y=(float)(fgetc(f)&0xff);
-	p->ill=4;
-	p->ib=
-	p->_u=true;
+	o->p->x=1.5f;
+	o->p->y=(float)(fgetc(f)&0xff)-0.5f;
+	uint16_t* pil=malloc(6*sizeof(uint16_t));
+	*pil=0;
+	*(pil+1)=1;
+	*(pil+2)=2;
+	*(pil+3)=0;
+	*(pil+4)=2;
+	*(pil+5)=3;
+	o->p->as=PLAYER_ANIM_STAGE_FRONT_STAND;
+	o->p->vl=malloc(16*sizeof(float));
+	*o->p->vl=(o->p->x-0.5f)*SIZE_SCALE+WIDTH_PAD;
+	*(o->p->vl+1)=(o->sy-o->p->y-0.5f)*SIZE_SCALE+HEIGHT_PAD;
+	*(o->p->vl+2)=TEXTURE_PLAYER_X0(o->p->as);
+	*(o->p->vl+3)=TEXTURE_PLAYER_Y0(o->p->as);
+	*(o->p->vl+4)=(o->p->x+0.5f)*SIZE_SCALE+WIDTH_PAD;
+	*(o->p->vl+5)=(o->sy-o->p->y-0.5f)*SIZE_SCALE+HEIGHT_PAD;
+	*(o->p->vl+6)=TEXTURE_PLAYER_X1(o->p->as);
+	*(o->p->vl+7)=TEXTURE_PLAYER_Y0(o->p->as);
+	*(o->p->vl+8)=(o->p->x+0.5f)*SIZE_SCALE+WIDTH_PAD;
+	*(o->p->vl+9)=(o->sy-o->p->y+0.5f)*SIZE_SCALE+HEIGHT_PAD;
+	*(o->p->vl+10)=TEXTURE_PLAYER_X1(o->p->as);
+	*(o->p->vl+11)=TEXTURE_PLAYER_Y1(o->p->as);
+	*(o->p->vl+12)=(o->p->x-0.5f)*SIZE_SCALE+WIDTH_PAD;
+	*(o->p->vl+13)=(o->sy-o->p->y+0.5f)*SIZE_SCALE+HEIGHT_PAD;
+	*(o->p->vl+14)=TEXTURE_PLAYER_X0(o->p->as);
+	*(o->p->vl+15)=TEXTURE_PLAYER_Y1(o->p->as);
+	o->p->_u=false;
+	D3D11_BUFFER_DESC bd={
+		(uint32_t)(6*sizeof(uint16_t)),
+		D3D11_USAGE_IMMUTABLE,
+		D3D11_BIND_INDEX_BUFFER,
+		0,
+		0,
+		0
+	};
+	D3D11_SUBRESOURCE_DATA dt={
+		pil,
+		0,
+		0
+	};
+	o->p->_ib=NULL;
+	HRESULT hr=ID3D11Device_CreateBuffer(renderer_d3_d,&bd,&dt,&(o->p->_ib));
+	assert(hr==S_OK);
+	free(pil);
+	bd.ByteWidth=(uint32_t)(16*sizeof(float));
+	bd.Usage=D3D11_USAGE_DYNAMIC;
+	bd.BindFlags=D3D11_BIND_VERTEX_BUFFER;
+	bd.CPUAccessFlags=D3D11_CPU_ACCESS_WRITE;
+	dt.pSysMem=o->p->vl;
+	o->p->_vb=NULL;
+	hr=ID3D11Device_CreateBuffer(renderer_d3_d,&bd,&dt,&(o->p->_vb));
+	assert(hr==S_OK);
 	o->bll=(fgetc(f)&0xff)|((fgetc(f)&0xff)<<8);
 	uint32_t* il=malloc(o->bll*6*sizeof(uint32_t));
 	float* vl=malloc(o->bll*16*sizeof(float));
@@ -83,20 +137,20 @@ Level load_level(char* nm){
 		uint16_t x=(fgetc(f)&0xff)|((fgetc(f)&0xff)<<8);
 		uint8_t y=x&0x3f;
 		x>>=6;
-		*(vl+i*16)=x*WIDTH_SCALE+WIDTH_PAD;
-		*(vl+i*16+1)=(o->sy-y)*HEIGHT_SCALE+HEIGHT_PAD;
+		*(vl+i*16)=x*SIZE_SCALE+WIDTH_PAD;
+		*(vl+i*16+1)=(o->sy-y)*SIZE_SCALE+HEIGHT_PAD;
 		*(vl+i*16+2)=TEXTURE_BLOCK_X0(t);
 		*(vl+i*16+3)=TEXTURE_BLOCK_Y1(t);
-		*(vl+i*16+4)=x*WIDTH_SCALE+WIDTH_PAD;
-		*(vl+i*16+5)=(o->sy-y-1)*HEIGHT_SCALE+HEIGHT_PAD;
+		*(vl+i*16+4)=x*SIZE_SCALE+WIDTH_PAD;
+		*(vl+i*16+5)=(o->sy-y-1)*SIZE_SCALE+HEIGHT_PAD;
 		*(vl+i*16+6)=TEXTURE_BLOCK_X0(t);
 		*(vl+i*16+7)=TEXTURE_BLOCK_Y0(t);
-		*(vl+i*16+8)=(x+1)*WIDTH_SCALE+WIDTH_PAD;
-		*(vl+i*16+9)=(o->sy-y-1)*HEIGHT_SCALE+HEIGHT_PAD;
+		*(vl+i*16+8)=(x+1)*SIZE_SCALE+WIDTH_PAD;
+		*(vl+i*16+9)=(o->sy-y-1)*SIZE_SCALE+HEIGHT_PAD;
 		*(vl+i*16+10)=TEXTURE_BLOCK_X1(t);
 		*(vl+i*16+11)=TEXTURE_BLOCK_Y0(t);
-		*(vl+i*16+12)=(x+1)*WIDTH_SCALE+WIDTH_PAD;
-		*(vl+i*16+13)=(o->sy-y)*HEIGHT_SCALE+HEIGHT_PAD;
+		*(vl+i*16+12)=(x+1)*SIZE_SCALE+WIDTH_PAD;
+		*(vl+i*16+13)=(o->sy-y)*SIZE_SCALE+HEIGHT_PAD;
 		*(vl+i*16+14)=TEXTURE_BLOCK_X1(t);
 		*(vl+i*16+15)=TEXTURE_BLOCK_Y1(t);
 		*(il+i*6)=i*4;
@@ -106,20 +160,12 @@ Level load_level(char* nm){
 		*(il+i*6+4)=i*4+2;
 		*(il+i*6+5)=i*4+3;
 	}
-	D3D11_BUFFER_DESC bd={
-		(uint32_t)(o->bll*6*sizeof(uint32_t)),
-		D3D11_USAGE_IMMUTABLE,
-		D3D11_BIND_INDEX_BUFFER,
-		0,
-		0,
-		0
-	};
-	D3D11_SUBRESOURCE_DATA dt={
-		il,
-		0,
-		0
-	};
-	HRESULT hr=ID3D11Device_CreateBuffer(renderer_d3_d,&bd,&dt,&(o->bl_ib));
+	bd.ByteWidth=(uint32_t)(o->bll*6*sizeof(uint32_t));
+	bd.Usage=D3D11_USAGE_IMMUTABLE;
+	bd.BindFlags=D3D11_BIND_INDEX_BUFFER;
+	bd.CPUAccessFlags=0;
+	dt.pSysMem=il;
+	hr=ID3D11Device_CreateBuffer(renderer_d3_d,&bd,&dt,&(o->bl_ib));
 	free(il);
 	bd.ByteWidth=(uint32_t)(o->bll*16*sizeof(float));
 	bd.BindFlags=D3D11_BIND_VERTEX_BUFFER;
@@ -144,7 +190,7 @@ void draw_level(Level l){
 		e_cb=create_constant_buffer(sizeof(CBufferExtraLayout));
 	}
 	CBufferLayout e_cb_dt={
-		raw_matrix(1,0,0,0,0,1,0,0,0,0,1,0,-l->cx*WIDTH_SCALE,-l->cy*HEIGHT_SCALE,0,1)
+		raw_matrix(1,0,0,0,0,1,0,0,0,0,1,0,-l->cx*SIZE_SCALE,-l->cy*SIZE_SCALE,0,1)
 	};
 	update_constant_buffer(e_cb,(void*)&e_cb_dt);
 	ID3D11DeviceContext_VSSetConstantBuffers(renderer_d3_dc,1,1,&e_cb);
@@ -155,4 +201,7 @@ void draw_level(Level l){
 	ID3D11DeviceContext_IASetIndexBuffer(renderer_d3_dc,l->bl_ib,DXGI_FORMAT_R32_UINT,0);
 	ID3D11DeviceContext_IASetPrimitiveTopology(renderer_d3_dc,D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	ID3D11DeviceContext_DrawIndexed(renderer_d3_dc,l->bll*6,0,0);
+	ID3D11DeviceContext_IASetVertexBuffers(renderer_d3_dc,0,1,&(l->p->_vb),&st,&off);
+	ID3D11DeviceContext_IASetIndexBuffer(renderer_d3_dc,l->p->_ib,DXGI_FORMAT_R16_UINT,0);
+	ID3D11DeviceContext_DrawIndexed(renderer_d3_dc,6,0,0);
 }

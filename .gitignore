@@ -2,5 +2,8 @@
 
 build
 rsrc/*.dds
+rsrc/*.json
+rsrc/tiles
+rsrc/*.png
 rsrc/levels/*.py
 *.py
