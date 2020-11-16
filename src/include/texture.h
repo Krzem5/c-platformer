@@ -4,10 +4,16 @@
 
 
 
+#define TEXTURE_X0(m,t) (m[t].x0)
+#define TEXTURE_Y0(m,t) (m[t].y0)
+#define TEXTURE_X1(m,t) (m[t].x1)
+#define TEXTURE_Y1(m,t) (m[t].y1)
+
+
+
 typedef struct _RAW_TEXTURE RawTexture;
 typedef ID3D11ShaderResourceView* Texture;
 typedef struct _TEXTURE_MAP_DATA TextureMapData;
-typedef struct _TEXTURE_MAP TextureMap;
 
 
 
@@ -27,13 +33,6 @@ struct _TEXTURE_MAP_DATA{
 	float y0;
 	float x1;
 	float y1;
-};
-
-
-
-struct _TEXTURE_MAP{
-	uint32_t l;
-	const TextureMapData* dt;
 };
 
 
