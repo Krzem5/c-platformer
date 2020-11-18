@@ -234,67 +234,6 @@ for k in os.listdir("rsrc"):
 			elif ((px_f&0x02)==0x02):
 				raise RuntimeError("ALPHA")
 			elif ((px_f&0x04)==0x04):
-				if (px_cc==0x31545844):
-					f=DXGI_FORMAT_BC1_UNORM
-				elif (px_cc==0x33545844):
-					f=DXGI_FORMAT_BC2_UNORM
-				elif (px_cc==0x35545844):
-					f=DXGI_FORMAT_BC3_UNORM
-				elif (px_cc==0x32545844):
-					f=DXGI_FORMAT_BC2_UNORM
-				elif (px_cc==0x34545844):
-					f=DXGI_FORMAT_BC3_UNORM
-				elif (px_cc==0x31495441):
-					f=DXGI_FORMAT_BC4_UNORM
-				elif (px_cc==0x55344342):
-					f=DXGI_FORMAT_BC4_UNORM
-				elif (px_cc==0x53344342):
-					f=DXGI_FORMAT_BC4_SNORM
-				elif (px_cc==0x32495441):
-					f=DXGI_FORMAT_BC5_UNORM
-				elif (px_cc==0x55354342):
-					f=DXGI_FORMAT_BC5_UNORM
-				elif (px_cc==0x53354342):
-					f=DXGI_FORMAT_BC5_SNORM
-				elif (px_cc==0x47424752):
-					f=DXGI_FORMAT_R8G8_B8G8_UNORM
-				elif (px_cc==0x42475247):
-					f=DXGI_FORMAT_G8R8_G8B8_UNORM
-				elif (px_cc==36):
-					f=DXGI_FORMAT_R16G16B16A16_UNORM
-				elif (px_cc==110):
-					f=DXGI_FORMAT_R16G16B16A16_SNORM
-				elif (px_cc==111):
-					f=DXGI_FORMAT_R16_FLOAT
-				elif (px_cc==112):
-					f=DXGI_FORMAT_R16G16_FLOAT
-				elif (px_cc==113):
-					f=DXGI_FORMAT_R16G16B16A16_FLOAT
-				elif (px_cc==114):
-					f=DXGI_FORMAT_R32_FLOAT
-				elif (px_cc==115):
-					f=DXGI_FORMAT_R32G32_FLOAT
-				elif (px_cc==116):
-					f=DXGI_FORMAT_R32G32B32A32_FLOAT
-				else:
-					raise RuntimeError
-				if ((f&0x800000)==0x800000):
-					raise RuntimeError("Unimplemented")
-				if ((c2&0x200)==0x200):
-					raise RuntimeError("Unimplemented")
-				if (mmc!=1):
-					raise RuntimeError("Unimplemented")
-				rb,nr=GetSurfaceInfo(w,h,f)
-				with open(f"rsrc\\{k[:-4]}.h","w") as wf:
-					o=""
-					dt=dt[128:rb*nr+128]
-					i=len(dt)
-					while (i!=0):
-						if (i>=6):
-							o+=f"\t{str(dt[-i]).rjust(3,' ')}, {str(dt[-i+1]).rjust(3,' ')}, {str(dt[-i+2]).rjust(3,' ')}, {str(dt[-i+3]).rjust(3,' ')}, {str(dt[-i+4]).rjust(3,' ')}, {str(dt[-i+5]).rjust(3,' ')},\n"
-						else:
-							print(dt[-i:])
-						i-=6
-					wf.write(f"#include <common.h>\n\n\n\nconst uint8_t {k[:-4].upper().replace(' ','_')}_TEX_DATA[]={{\n{o}}};\n\n\n\nconst RawTexture {k[:-4].upper().replace(' ','_')}_TEX={{\n\t{f},\n\t{w},\n\t{h},\n\t{rb},\n\t{rb*nr},\n\t{k[:-4].upper().replace(' ','_')}_TEX_DATA\n}};\n")
+				raise RuntimeError
 			else:
 				raise RuntimeError(px_f)
