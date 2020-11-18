@@ -1,6 +1,7 @@
 #ifndef __LEVEL_H__
 #define __LEVEL_H__
 #include <common.h>
+#include <ds4.h>
 #include <tilemap.h>
 
 
@@ -12,8 +13,17 @@
 
 
 
+typedef struct _LEVEL_COLLISION_DATA* CollisionData;
 typedef struct _LEVEL* Level;
 typedef struct _PLAYER* Player;
+
+
+
+struct _LEVEL_COLLISION_DATA{
+	uint32_t b_dtl;
+	uint8_t* b_dt;
+	uint16_t _w;
+};
 
 
 
@@ -24,6 +34,7 @@ struct _LEVEL{
 	uint8_t sy;
 	float cx;
 	float cy;
+	struct _LEVEL_COLLISION_DATA* c_dt;
 	Player p;
 	uint32_t bll;
 	ID3D11Buffer* bl_ib;
@@ -35,8 +46,13 @@ struct _LEVEL{
 struct _PLAYER{
 	float x;
 	float y;
+	float vx;
+	float vy;
 	enum TILEMAP_TEX_IMG as;
+	bool as_f;
 	float* vl;
+	bool on_g;
+	DS4Device dd;
 	bool _u;
 	ID3D11Buffer* _ib;
 	ID3D11Buffer* _vb;
