@@ -92,7 +92,11 @@ DS4Device DS4_connect(char* p);
 
 
 
-void DS4_update(DS4Device d);
+void DS4_update_input(DS4Device d);
+
+
+
+void DS4_update_output(DS4Device d);
 
 
 

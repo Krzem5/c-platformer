@@ -36,6 +36,9 @@ struct _LEVEL{
 	float cy;
 	struct _LEVEL_COLLISION_DATA* c_dt;
 	Player p;
+	uint32_t pdll;
+	ID3D11Buffer* pd_ib;
+	ID3D11Buffer* pd_vb;
 	uint32_t bll;
 	ID3D11Buffer* bl_ib;
 	ID3D11Buffer* bl_vb;
@@ -48,12 +51,16 @@ struct _PLAYER{
 	float y;
 	float vx;
 	float vy;
+	uint8_t d;
 	enum TILEMAP_TEX_IMG as;
 	bool as_f;
 	float* vl;
 	bool on_g;
 	DS4Device dd;
 	bool _u;
+	uint8_t _dft;
+	float _dtm;
+	float _dftm;
 	ID3D11Buffer* _ib;
 	ID3D11Buffer* _vb;
 };

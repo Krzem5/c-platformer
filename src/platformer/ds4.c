@@ -264,43 +264,14 @@ DS4Device DS4_connect(char* p){
 		*(o->_ib+i)=0;
 	}
 	QueryPerformanceFrequency(&o->_tf);
-	DS4_update(o);
+	DS4_update_input(o);
+	DS4_update_output(o);
 	return o;
 }
 
 
 
-void DS4_update(DS4Device d){
-	uint64_t uc=((uint64_t)d->r<<56)|((uint64_t)d->g<<48)|((uint64_t)d->b<<40)|((uint64_t)d->fr<<32)|((uint64_t)d->sr<<24)|((uint64_t)d->r<<16)|((uint64_t)d->r<<8);
-	if (d->_uc!=uc){
-		d->_uc=uc;
-		*d->_ob=0x05;
-		*(d->_ob+1)=0x7f;
-		*(d->_ob+2)=0x04;
-		*(d->_ob+4)=d->fr;
-		*(d->_ob+5)=d->sr;
-		*(d->_ob+6)=d->r;
-		*(d->_ob+7)=d->g;
-		*(d->_ob+8)=d->b;
-		*(d->_ob+9)=d->fon;
-		*(d->_ob+10)=d->foff;
-		OVERLAPPED oe;
-		memset(&oe,0,sizeof(OVERLAPPED));
-		int r=WriteFile(d->_fh,d->_ob,32,NULL,&oe);
-		if (r==0){
-			if (GetLastError()!=ERROR_IO_PENDING){
-				printf("ERROR: %lx\n",GetLastError());
-				assert(0);
-				return;
-			}
-		}
-		uint32_t br=0;
-		r=GetOverlappedResult(d->_fh,&oe,&br,true);
-		if (r==0){
-			assert(0);
-			return;
-		}
-	}
+void DS4_update_input(DS4Device d){
 	uint32_t br=0;
 	if ((d->_f&1)==0){
 		d->_f|=1;
@@ -347,6 +318,41 @@ void DS4_update(DS4Device d){
 		d->rx=-128+*(d->_ib+3);
 		d->ry=127-*(d->_ib+4);
 		d->bt=(uint8_t)(((*(d->_ib+30))&16)*15.9375);
+	}
+}
+
+
+
+void DS4_update_output(DS4Device d){
+	uint64_t uc=((uint64_t)d->r<<56)|((uint64_t)d->g<<48)|((uint64_t)d->b<<40)|((uint64_t)d->fr<<32)|((uint64_t)d->sr<<24)|((uint64_t)d->r<<16)|((uint64_t)d->r<<8);
+	if (d->_uc!=uc){
+		d->_uc=uc;
+		*d->_ob=0x05;
+		*(d->_ob+1)=0x7f;
+		*(d->_ob+2)=0x04;
+		*(d->_ob+4)=d->fr;
+		*(d->_ob+5)=d->sr;
+		*(d->_ob+6)=d->r;
+		*(d->_ob+7)=d->g;
+		*(d->_ob+8)=d->b;
+		*(d->_ob+9)=d->fon;
+		*(d->_ob+10)=d->foff;
+		OVERLAPPED oe;
+		memset(&oe,0,sizeof(OVERLAPPED));
+		int r=WriteFile(d->_fh,d->_ob,32,NULL,&oe);
+		if (r==0){
+			if (GetLastError()!=ERROR_IO_PENDING){
+				printf("ERROR: %lx\n",GetLastError());
+				assert(0);
+				return;
+			}
+		}
+		uint32_t br=0;
+		r=GetOverlappedResult(d->_fh,&oe,&br,true);
+		if (r==0){
+			assert(0);
+			return;
+		}
 	}
 }
 

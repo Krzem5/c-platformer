@@ -11,6 +11,7 @@
 #define SIZE_SCALE (((float)renderer_ww/TOTAL_X_BLOCKS)<((float)renderer_wh/TOTAL_Y_BLOCKS)?(float)renderer_ww/TOTAL_X_BLOCKS:(float)renderer_wh/TOTAL_Y_BLOCKS)
 #define WIDTH_PAD ((renderer_ww-SIZE_SCALE*TOTAL_X_BLOCKS)/2)
 #define HEIGHT_PAD ((renderer_wh-SIZE_SCALE*TOTAL_Y_BLOCKS)/2)
+#define SIDE_TILE_SIZE 64
 #define COLLISION_DATA_INDEX(c,x,y) (*(c->b_dt+y*c->_w+x))
 #define COLLISION_DATA_XY_FROM_INDEX(c,i,x,y) \
 	do { \
@@ -18,18 +19,37 @@
 		y=(float)(i/((c)->_w)); \
 	} while(0)
 #define PLAYER_WIDTH 0.8f
-#define WALK_SPEED 5
-#define AIR_WALK_SPEED 0.1f
+#define WALK_SPEED 2
+#define AIR_WALK_SPEED 0.05f
 #define JUMP (1.5*(1/GRAVITY))
 #define GRAVITY 0.1f
-#define FRICTION 0.5f
-#define AIR_FRICTION 0.98f
-#define MAX_SPEED 30
+#define AIR_FRICTION 0.995f
+#define MAX_X_SPEED 3.0f
+#define MAX_SPEED 30/***/
+#define DEATH_ANIM_END 1.0f
+#define DEATH_ANIM_FLASH 0.25f
+#define DEATH_ANIM_R 50
+#define DEATH_ANIM_G 0
+#define DEATH_ANIM_B 0
+#define DEATH_RUMBLE_S 128
+#define DEATH_RUMBLE_F 255
 
 
 
 bool _intersect_aabb(float a[],float b[]){
 	return (a[0]+a[2]/2>b[0]-b[2]/2&&a[0]-a[2]/2<b[0]+b[2]/2&&a[1]+a[3]/2>b[1]-b[3]/2&&a[1]-a[3]/2<b[1]+b[3]/2);
+}
+
+
+
+void _separate_wall_aabb(Player p,float a[]){
+	if (a[0]-a[2]/2<0){
+		p->vx=0;
+		p->x=a[2]/2;
+	}
+	if (a[1]+a[3]/2<0){
+		p->d=1;
+	}
 }
 
 
@@ -137,6 +157,7 @@ Level load_level(char* nm){
 	o->p->y=(float)(fgetc(f)&0xff)-0.5f;
 	o->p->vx=0;
 	o->p->vy=0;
+	o->p->d=0;
 	uint16_t* pil=malloc(6*sizeof(uint16_t));
 	*pil=0;
 	*(pil+1)=1;
@@ -172,6 +193,9 @@ Level load_level(char* nm){
 	o->p->dd->g=210;
 	o->p->dd->b=140;
 	o->p->_u=false;
+	o->p->_dft=0;
+	o->p->_dtm=0;
+	o->p->_dftm=0;
 	D3D11_BUFFER_DESC bd={
 		(uint32_t)(6*sizeof(uint16_t)),
 		D3D11_USAGE_IMMUTABLE,
@@ -198,6 +222,50 @@ Level load_level(char* nm){
 	hr=ID3D11Device_CreateBuffer(renderer_d3_d,&bd,&dt,&(o->p->_vb));
 	assert(hr==S_OK);
 	o->bll=(fgetc(f)&0xff)|((fgetc(f)&0xff)<<8);
+	uint16_t pd_x=((uint16_t)WIDTH_PAD+SIDE_TILE_SIZE-1)/SIDE_TILE_SIZE;
+	uint16_t pd_y=(renderer_wh+SIDE_TILE_SIZE-1)/SIDE_TILE_SIZE;
+	o->pdll=((size_t)WIDTH_PAD+SIDE_TILE_SIZE-1)/SIDE_TILE_SIZE*(renderer_wh+SIDE_TILE_SIZE-1)/SIDE_TILE_SIZE;
+	uint16_t* pd_il=malloc(o->pdll*6*sizeof(uint16_t));
+	float* pd_vl=malloc(o->pdll*16*sizeof(float));
+	for (uint16_t i=0;i<pd_x;i++){
+		for (uint16_t j=0;j<pd_y;j++){
+			uint32_t k=((uint32_t)j)*pd_x+i;
+			*(pd_vl+k*16)=(float)(i*SIDE_TILE_SIZE);
+			*(pd_vl+k*16+1)=(float)(j*SIDE_TILE_SIZE);
+			*(pd_vl+k*16+2)=TEXTURE_X0(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE_PAD);
+			*(pd_vl+k*16+3)=TEXTURE_Y0(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE_PAD);
+			*(pd_vl+k*16+4)=(float)(i*SIDE_TILE_SIZE+SIDE_TILE_SIZE);
+			*(pd_vl+k*16+5)=(float)(j*SIDE_TILE_SIZE);
+			*(pd_vl+k*16+6)=TEXTURE_X1(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE_PAD);
+			*(pd_vl+k*16+7)=TEXTURE_Y0(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE_PAD);
+			*(pd_vl+k*16+8)=(float)(i*SIDE_TILE_SIZE+SIDE_TILE_SIZE);
+			*(pd_vl+k*16+9)=(float)(j*SIDE_TILE_SIZE+SIDE_TILE_SIZE);
+			*(pd_vl+k*16+10)=TEXTURE_X1(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE_PAD);
+			*(pd_vl+k*16+11)=TEXTURE_Y1(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE_PAD);
+			*(pd_vl+k*16+12)=(float)(i*SIDE_TILE_SIZE);
+			*(pd_vl+k*16+13)=(float)(j*SIDE_TILE_SIZE+SIDE_TILE_SIZE);
+			*(pd_vl+k*16+14)=TEXTURE_X0(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE_PAD);
+			*(pd_vl+k*16+15)=TEXTURE_Y1(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE_PAD);
+			*(pd_il+k*6)=k*4;
+			*(pd_il+k*6+1)=k*4+1;
+			*(pd_il+k*6+2)=k*4+2;
+			*(pd_il+k*6+3)=k*4;
+			*(pd_il+k*6+4)=k*4+2;
+			*(pd_il+k*6+5)=k*4+3;
+		}
+	}
+	bd.ByteWidth=(uint32_t)(o->pdll*6*sizeof(uint16_t));
+	bd.Usage=D3D11_USAGE_IMMUTABLE;
+	bd.BindFlags=D3D11_BIND_INDEX_BUFFER;
+	bd.CPUAccessFlags=0;
+	dt.pSysMem=pd_il;
+	hr=ID3D11Device_CreateBuffer(renderer_d3_d,&bd,&dt,&(o->pd_ib));
+	free(pd_il);
+	bd.ByteWidth=(uint32_t)(o->pdll*16*sizeof(float));
+	bd.BindFlags=D3D11_BIND_VERTEX_BUFFER;
+	dt.pSysMem=pd_vl;
+	hr=ID3D11Device_CreateBuffer(renderer_d3_d,&bd,&dt,&(o->pd_vb));
+	free(pd_vl);
 	uint32_t* il=malloc(o->bll*6*sizeof(uint32_t));
 	float* vl=malloc(o->bll*16*sizeof(float));
 	for (uint32_t i=0;i<o->bll;i++){
@@ -230,9 +298,7 @@ Level load_level(char* nm){
 		*(il+i*6+5)=i*4+3;
 	}
 	bd.ByteWidth=(uint32_t)(o->bll*6*sizeof(uint32_t));
-	bd.Usage=D3D11_USAGE_IMMUTABLE;
 	bd.BindFlags=D3D11_BIND_INDEX_BUFFER;
-	bd.CPUAccessFlags=0;
 	dt.pSysMem=il;
 	hr=ID3D11Device_CreateBuffer(renderer_d3_d,&bd,&dt,&(o->bl_ib));
 	free(il);
@@ -250,55 +316,101 @@ Level load_level(char* nm){
 void update_level(Level l,float dt){
 	#define JOYSTICK_TURN_BUFFOR 32
 	assert(l!=NULL);
-	DS4_update(l->p->dd);
-	if (l->p->dd->lx<=-JOYSTICK_TURN_BUFFOR||l->p->dd->lx>=JOYSTICK_TURN_BUFFOR){
-		l->p->vx+=(l->p->dd->lx>0?1:-1)*(l->p->on_g==true?WALK_SPEED:AIR_WALK_SPEED);
-		l->p->as=TILEMAP_TEX_IMG_PLAYER_STAND;
-		l->p->as_f=(l->p->dd->lx>0?false:true);
-	}
-	if (l->p->on_g==true&&(l->p->dd->btn&DS4_BUTTON_CROSS)!=0){
-		l->p->vy+=JUMP;
-		l->p->as=TILEMAP_TEX_IMG_PLAYER_JUMP;
-		l->p->on_g=false;
-	}
-	else if (l->p->on_g==true){
-		l->p->as=TILEMAP_TEX_IMG_PLAYER_STAND;
-	}
-	l->p->vx*=(l->p->on_g==true?FRICTION:AIR_FRICTION);
-	l->p->vy-=GRAVITY;
-	float m=l->p->vx*l->p->vx+l->p->vy*l->p->vy;
-	if (m>MAX_SPEED*MAX_SPEED){
-		m=MAX_SPEED/sqrtf(m);
-		l->p->vx*=m;
-		l->p->vy*=m;
-	}
-	l->p->x+=l->p->vx*dt;
-	l->p->y+=l->p->vy*dt;
-	float aabb[]={l->p->x,l->p->y,PLAYER_WIDTH,1.0f};
-	l->p->on_g=false;
-	for (uint32_t i=0;i<l->c_dt->b_dtl;i++){
-		if (*(l->c_dt->b_dt+i)==0){
-			continue;
+	assert(l->p->d!=2);/*************************************************/
+	DS4_update_input(l->p->dd);
+	if (l->p->d==1){
+		if (l->p->_dtm==0){
+			l->p->dd->sr=DEATH_RUMBLE_S;
 		}
-		float b_aabb[4];
-		if (*(l->c_dt->b_dt+i)==1){
-			float x;
-			float y;
-			COLLISION_DATA_XY_FROM_INDEX(l->c_dt,i,x,y);
-			*b_aabb=x+0.5f;
-			*(b_aabb+1)=y+0.5f;
-			*(b_aabb+2)=1.0f;
-			*(b_aabb+3)=1.0f;
+		else if (l->p->_dtm>=DEATH_ANIM_END){
+			l->p->d=2;
+			l->p->dd->r=0;
+			l->p->dd->g=0;
+			l->p->dd->b=0;
+			l->p->dd->fr=0;
+			l->p->dd->sr=0;
 		}
-		if (_intersect_aabb(aabb,b_aabb)==true){
-			bool g=_separate_aabb(l->p,aabb,b_aabb);
-			if (g==true){
-				l->p->on_g=true;
+		l->p->_dtm+=dt;
+		l->p->_dftm+=dt;
+		if (l->p->_dft==0||l->p->_dftm>=DEATH_ANIM_FLASH){
+			if (l->p->_dft%2==0){
+				l->p->dd->r=0;
+				l->p->dd->g=0;
+				l->p->dd->b=0;
+				l->p->dd->fr=0;
 			}
-			aabb[0]=l->p->x;
-			aabb[1]=l->p->y;
+			else{
+				l->p->dd->r=DEATH_ANIM_R;
+				l->p->dd->g=DEATH_ANIM_G;
+				l->p->dd->b=DEATH_ANIM_B;
+				l->p->dd->fr=DEATH_RUMBLE_F;
+			}
+			l->p->_dftm=0;
+			l->p->_dft++;
 		}
 	}
+	else{
+		if (l->p->dd->lx<=-JOYSTICK_TURN_BUFFOR||l->p->dd->lx>=JOYSTICK_TURN_BUFFOR){
+			l->p->vx+=(l->p->dd->lx>0?1:-1)*(l->p->on_g==true?WALK_SPEED:AIR_WALK_SPEED);
+			l->p->as=TILEMAP_TEX_IMG_PLAYER_STAND;
+			l->p->as_f=(l->p->dd->lx>0?false:true);
+		}
+		if (l->p->on_g==true&&(l->p->dd->btn&DS4_BUTTON_CROSS)!=0){
+			l->p->vy+=JUMP;
+			l->p->on_g=false;
+		}
+		else if (l->p->on_g==true){
+			l->p->as=TILEMAP_TEX_IMG_PLAYER_STAND;
+		}
+		l->p->vy-=GRAVITY;
+		if (l->p->vx<-MAX_X_SPEED||l->p->vx>MAX_X_SPEED){
+			l->p->vx=(l->p->vx<0?-1:1)*MAX_X_SPEED;
+		}
+		float m=l->p->vx*l->p->vx+l->p->vy*l->p->vy;
+		if (m>MAX_SPEED*MAX_SPEED){
+			m=MAX_SPEED/sqrtf(m);
+			l->p->vx*=m;
+			l->p->vy*=m;
+		}
+		l->p->x+=l->p->vx*dt;
+		l->p->y+=l->p->vy*dt;
+		float aabb[]={l->p->x,l->p->y,PLAYER_WIDTH,1.0f};
+		_separate_wall_aabb(l->p,aabb);
+		aabb[0]=l->p->x;
+		aabb[1]=l->p->y;
+		l->p->on_g=false;
+		for (uint32_t i=0;i<l->c_dt->b_dtl;i++){
+			if (*(l->c_dt->b_dt+i)==0){
+				continue;
+			}
+			float b_aabb[4];
+			if (*(l->c_dt->b_dt+i)==1){
+				float x;
+				float y;
+				COLLISION_DATA_XY_FROM_INDEX(l->c_dt,i,x,y);
+				*b_aabb=x+0.5f;
+				*(b_aabb+1)=y+0.5f;
+				*(b_aabb+2)=1.0f;
+				*(b_aabb+3)=1.0f;
+			}
+			if (_intersect_aabb(aabb,b_aabb)==true){
+				bool g=_separate_aabb(l->p,aabb,b_aabb);
+				if (g==true){
+					l->p->on_g=true;
+				}
+				aabb[0]=l->p->x;
+				aabb[1]=l->p->y;
+			}
+		}
+		if (l->p->on_g==false){
+			l->p->as=TILEMAP_TEX_IMG_PLAYER_JUMP;
+			l->p->vx*=AIR_FRICTION;
+		}
+		else{
+			l->p->vx=0;
+		}
+	}
+	DS4_update_output(l->p->dd);
 	*l->p->vl=(l->p->x-0.5f)*SIZE_SCALE+WIDTH_PAD;
 	*(l->p->vl+1)=(l->sy-l->p->y-0.5f)*SIZE_SCALE+HEIGHT_PAD;
 	*(l->p->vl+4)=(l->p->x+0.5f)*SIZE_SCALE+WIDTH_PAD;
@@ -346,7 +458,7 @@ void draw_level(Level l){
 	if (e_cb==NULL){
 		e_cb=create_constant_buffer(sizeof(CBufferExtraLayout));
 	}
-	CBufferLayout e_cb_dt={
+	CBufferExtraLayout e_cb_dt={
 		raw_matrix(1,0,0,0,0,1,0,0,0,0,1,0,-l->cx*SIZE_SCALE,-l->cy*SIZE_SCALE,0,1)
 	};
 	update_constant_buffer(e_cb,(void*)&e_cb_dt);
@@ -361,4 +473,9 @@ void draw_level(Level l){
 	ID3D11DeviceContext_IASetVertexBuffers(renderer_d3_dc,0,1,&(l->p->_vb),&st,&off);
 	ID3D11DeviceContext_IASetIndexBuffer(renderer_d3_dc,l->p->_ib,DXGI_FORMAT_R16_UINT,0);
 	ID3D11DeviceContext_DrawIndexed(renderer_d3_dc,6,0,0);
+	e_cb_dt.wm=raw_matrix(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
+	update_constant_buffer(e_cb,(void*)&e_cb_dt);
+	ID3D11DeviceContext_IASetVertexBuffers(renderer_d3_dc,0,1,&(l->pd_vb),&st,&off);
+	ID3D11DeviceContext_IASetIndexBuffer(renderer_d3_dc,l->pd_ib,DXGI_FORMAT_R16_UINT,0);
+	ID3D11DeviceContext_DrawIndexed(renderer_d3_dc,l->pdll*6,0,0);
 }
