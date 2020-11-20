@@ -2,8 +2,6 @@
 #include <engine.h>
 #include <renderer.h>
 #include <level.h>
-// #include <color_2d_pixel.h>
-// #include <color_2d_vertex.h>
 #include <stdio.h>
 
 
@@ -20,35 +18,12 @@ struct CBufferExtraLayout{
 
 
 
-// ID3D11VertexShader* cl_vs=NULL;
-// ID3D11PixelShader* cl_ps=NULL;
-// ID3D11InputLayout* cl_vl=NULL;
 ID3D11Buffer* cb=NULL;
 Level l=NULL;
 
 
 
 void init_engine(void){
-	// D3D11_INPUT_ELEMENT_DESC cl_il[]={
-	// 	{
-	// 		"POSITION",
-	// 		0,
-	// 		DXGI_FORMAT_R32G32B32A32_FLOAT,
-	// 		0,
-	// 		0,
-	// 		D3D11_INPUT_PER_VERTEX_DATA
-	// 	},
-	// 	{
-	// 		"COLOR",
-	// 		0,
-	// 		DXGI_FORMAT_R32G32B32A32_FLOAT,
-	// 		0,
-	// 		D3D11_APPEND_ALIGNED_ELEMENT,
-	// 		D3D11_INPUT_PER_VERTEX_DATA
-	// 	}
-	// };
-	// cl_vs=load_vertex_shader(g_color_2d_vs,sizeof(g_color_2d_vs),cl_il,sizeof(cl_il)/sizeof(D3D11_INPUT_ELEMENT_DESC),&cl_vl);
-	// cl_ps=load_pixel_shader(g_color_2d_ps,sizeof(g_color_2d_ps));
 	cb=create_constant_buffer(sizeof(CBufferLayout));
 	#define _near (0.1f)
 	#define _far (1000.0f)

@@ -2,6 +2,8 @@
 #include <renderer.h>
 #include <level.h>
 #include <ds4.h>
+#include <color_2d_pixel.h>
+#include <color_2d_vertex.h>
 #include <texture_2d_vertex.h>
 #include <texture_2d_pixel.h>
 #include <stdio.h>
@@ -22,16 +24,19 @@
 		x=(float)(i%((c)->_w)); \
 		y=(float)(i/((c)->_w)); \
 	} while(0)
+#define PLAYER_WALK_FRAME_TIME 0.125f
+#define PLAYER_DASH_FRAME_TIME 0.075f
 #define PLAYER_START_X 1.5f
 #define PLAYER_WIDTH 0.8f
-#define WALK_SPEED 2
-#define AIR_WALK_SPEED 0.05f
-#define JUMP (1.5*(1/GRAVITY))
+#define WALK_SPEED 3
+#define DASH_SPEED_MLT 2.25f
+#define AIR_WALK_SPEED 0.01f
+#define JUMP 13
 #define GRAVITY 0.1f
 #define AIR_FRICTION 0.995f
-#define MAX_X_SPEED 3.0f
-#define MAX_SPEED 30/***/
-#define DEATH_ANIM_END 1.0f
+#define MAX_X_SPEED (WALK_SPEED*DASH_SPEED_MLT)
+#define MAX_Y_SPEED 25.0f
+#define DEATH_ANIM_END 1.25f
 #define DEATH_ANIM_FLASH 0.25f
 #define DEATH_ANIM_R 50
 #define DEATH_ANIM_G 0
@@ -41,6 +46,9 @@
 
 
 
+ID3D11VertexShader* cl_vs=NULL;
+ID3D11PixelShader* cl_ps=NULL;
+ID3D11InputLayout* cl_vl=NULL;
 ID3D11VertexShader* tx_vs=NULL;
 ID3D11PixelShader* tx_ps=NULL;
 ID3D11InputLayout* tx_vl=NULL;
@@ -179,6 +187,7 @@ Level load_level(char* nm){
 	*(pil+5)=3;
 	o->p->as=TILEMAP_TEX_IMG_PLAYER_STAND_FRONT;
 	o->p->as_f=false;
+	o->p->as_tm=-1;
 	o->p->vl=malloc(16*sizeof(float));
 	*o->p->vl=(o->p->x-0.5f)*SIZE_SCALE+WIDTH_PAD;
 	*(o->p->vl+1)=(o->sy-o->p->y-0.5f)*SIZE_SCALE+HEIGHT_PAD;
@@ -376,27 +385,48 @@ void update_level(Level l,float dt){
 		}
 	}
 	else{
+		bool n_as=false;
 		if (l->p->dd->lx<=-JOYSTICK_TURN_BUFFOR||l->p->dd->lx>=JOYSTICK_TURN_BUFFOR){
-			l->p->vx+=(l->p->dd->lx>0?1:-1)*(l->p->on_g==true?WALK_SPEED:AIR_WALK_SPEED);
-			l->p->as=TILEMAP_TEX_IMG_PLAYER_STAND;
+			l->p->vx+=(l->p->dd->lx>0?1:-1)*(l->p->on_g==true?WALK_SPEED:AIR_WALK_SPEED)*((l->p->dd->btn&DS4_BUTTON_SQUARE)!=0?DASH_SPEED_MLT:1);
+			if (l->p->as_tm==-1){
+				l->p->as=TILEMAP_TEX_IMG_PLAYER_WALK_1;
+				l->p->as_tm=0;
+			}
+			else{
+				float tm=((l->p->dd->btn&DS4_BUTTON_SQUARE)!=0?PLAYER_DASH_FRAME_TIME:PLAYER_WALK_FRAME_TIME);
+				if (l->p->as_tm>=tm){
+					while (l->p->as_tm>=tm){
+						l->p->as_tm-=tm;
+					}
+					if (l->p->as==TILEMAP_TEX_IMG_PLAYER_WALK_1){
+						l->p->as=TILEMAP_TEX_IMG_PLAYER_WALK_2;
+					}
+					else{
+						l->p->as=TILEMAP_TEX_IMG_PLAYER_WALK_1;
+					}
+				}
+			}
+			l->p->as_tm+=dt;
 			l->p->as_f=(l->p->dd->lx>0?false:true);
+			n_as=true;
+		}
+		else{
+			l->p->as=TILEMAP_TEX_IMG_PLAYER_STAND;
+			l->p->as_tm=-1;
 		}
 		if (l->p->on_g==true&&(l->p->dd->btn&DS4_BUTTON_CROSS)!=0){
 			l->p->vy+=JUMP;
 			l->p->on_g=false;
 		}
-		else if (l->p->on_g==true){
+		if (n_as==false){
 			l->p->as=TILEMAP_TEX_IMG_PLAYER_STAND;
 		}
 		l->p->vy-=GRAVITY;
 		if (l->p->vx<-MAX_X_SPEED||l->p->vx>MAX_X_SPEED){
 			l->p->vx=(l->p->vx<0?-1:1)*MAX_X_SPEED;
 		}
-		float m=l->p->vx*l->p->vx+l->p->vy*l->p->vy;
-		if (m>MAX_SPEED*MAX_SPEED){
-			m=MAX_SPEED/sqrtf(m);
-			l->p->vx*=m;
-			l->p->vy*=m;
+		if (l->p->vy<-MAX_Y_SPEED||l->p->vy>MAX_Y_SPEED){
+			l->p->vy=(l->p->vy<0?-1:1)*MAX_Y_SPEED;
 		}
 		l->p->x+=l->p->vx*dt;
 		l->p->y+=l->p->vy*dt;
@@ -488,12 +518,37 @@ void draw_level(Level l){
 	if (e_cb==NULL){
 		e_cb=create_constant_buffer(sizeof(CBufferExtraLayout));
 	}
-	if (tx_vs==NULL||tx_ps==NULL||tx_sr==NULL){
+	if (cl_vs==NULL||cl_vl==NULL||cl_ps==NULL||tx_vs==NULL||tx_vl==NULL||tx_ps==NULL||tx_sr==NULL||tx_ss==NULL){
+		assert(cl_vs==NULL);
+		assert(cl_vl==NULL);
+		assert(cl_ps==NULL);
 		assert(tx_vs==NULL);
 		assert(tx_vl==NULL);
 		assert(tx_ps==NULL);
 		assert(tx_sr==NULL);
 		assert(tx_ss==NULL);
+		D3D11_INPUT_ELEMENT_DESC cl_il[]={
+			{
+				"POSITION",
+				0,
+				DXGI_FORMAT_R32G32_FLOAT,
+				0,
+				0,
+				D3D11_INPUT_PER_VERTEX_DATA,
+				0
+			},
+			{
+				"COLOR",
+				0,
+				DXGI_FORMAT_R32G32B32A32_FLOAT,
+				0,
+				D3D11_APPEND_ALIGNED_ELEMENT,
+				D3D11_INPUT_PER_VERTEX_DATA,
+				0
+			}
+		};
+		cl_vs=load_vertex_shader(g_color_2d_vs,sizeof(g_color_2d_vs),cl_il,sizeof(cl_il)/sizeof(D3D11_INPUT_ELEMENT_DESC),&cl_vl);
+		cl_ps=load_pixel_shader(g_color_2d_ps,sizeof(g_color_2d_ps));
 		D3D11_INPUT_ELEMENT_DESC tx_il[]={
 			{
 				"POSITION",
@@ -576,8 +631,6 @@ void draw_level(Level l){
 	}
 	float bf[]={0,0,0,0};
 	ID3D11DeviceContext_OMSetBlendState(renderer_d3_dc,renderer_d3_bse,bf,0xffffffff);
-	ID3D11DeviceContext_VSSetShader(renderer_d3_dc,tx_vs,NULL,0);
-	ID3D11DeviceContext_PSSetShader(renderer_d3_dc,tx_ps,NULL,0);
 	ID3D11DeviceContext_OMSetDepthStencilState(renderer_d3_dc,renderer_d3_ddss,1);
 	ID3D11DeviceContext_IASetInputLayout(renderer_d3_dc,tx_vl);
 	ID3D11DeviceContext_PSSetSamplers(renderer_d3_dc,0,1,&tx_ss);
@@ -586,13 +639,20 @@ void draw_level(Level l){
 		raw_matrix(1,0,0,0,0,1,0,0,0,0,1,0,-l->cx*SIZE_SCALE,-l->cy*SIZE_SCALE,0,1)
 	};
 	update_constant_buffer(e_cb,(void*)&e_cb_dt);
-	ID3D11DeviceContext_VSSetConstantBuffers(renderer_d3_dc,1,1,&e_cb);
-	ID3D11DeviceContext_PSSetConstantBuffers(renderer_d3_dc,1,1,&e_cb);
+	ID3D11DeviceContext_VSSetShader(renderer_d3_dc,cl_vs,NULL,0);
+	ID3D11DeviceContext_PSSetShader(renderer_d3_dc,cl_ps,NULL,0);
 	unsigned int off=0;
 	unsigned int st=4*sizeof(float);
+	// ID3D11DeviceContext_IASetVertexBuffers(renderer_d3_dc,0,1,&(l->bl_vb),&st,&off);
+	// ID3D11DeviceContext_IASetIndexBuffer(renderer_d3_dc,l->bl_ib,DXGI_FORMAT_R16_UINT,0);
+	ID3D11DeviceContext_IASetPrimitiveTopology(renderer_d3_dc,D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	// ID3D11DeviceContext_DrawIndexed(renderer_d3_dc,l->bll*6,0,0);
+	ID3D11DeviceContext_VSSetShader(renderer_d3_dc,tx_vs,NULL,0);
+	ID3D11DeviceContext_PSSetShader(renderer_d3_dc,tx_ps,NULL,0);
+	ID3D11DeviceContext_VSSetConstantBuffers(renderer_d3_dc,1,1,&e_cb);
+	ID3D11DeviceContext_PSSetConstantBuffers(renderer_d3_dc,1,1,&e_cb);
 	ID3D11DeviceContext_IASetVertexBuffers(renderer_d3_dc,0,1,&(l->bl_vb),&st,&off);
 	ID3D11DeviceContext_IASetIndexBuffer(renderer_d3_dc,l->bl_ib,DXGI_FORMAT_R32_UINT,0);
-	ID3D11DeviceContext_IASetPrimitiveTopology(renderer_d3_dc,D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	ID3D11DeviceContext_DrawIndexed(renderer_d3_dc,l->bll*6,0,0);
 	ID3D11DeviceContext_IASetVertexBuffers(renderer_d3_dc,0,1,&(l->p->_vb),&st,&off);
 	ID3D11DeviceContext_IASetIndexBuffer(renderer_d3_dc,l->p->_ib,DXGI_FORMAT_R16_UINT,0);

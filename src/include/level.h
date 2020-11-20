@@ -57,6 +57,7 @@ struct _PLAYER{
 	uint8_t d;
 	enum TILEMAP_TEX_IMG as;
 	bool as_f;
+	float as_tm;
 	float* vl;
 	bool on_g;
 	DS4Device dd;

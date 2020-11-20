@@ -305,7 +305,7 @@ void DS4_update_input(DS4Device d){
 		d->btn=(((*(d->_ib+6))&128)!=0?d->btn|DS4_BUTTON_R3:d->btn&(~DS4_BUTTON_R3));
 		d->btn=(((*(d->_ib+5))&32)!=0?d->btn|DS4_BUTTON_CROSS:d->btn&(~DS4_BUTTON_CROSS));
 		d->btn=(((*(d->_ib+5))&64)!=0?d->btn|DS4_BUTTON_CIRCLE:d->btn&(~DS4_BUTTON_CIRCLE));
-		d->btn=(((*(d->_ib+5))&16)!=0?d->btn|DS4_BUTTON_SQURARE:d->btn&(~DS4_BUTTON_SQURARE));
+		d->btn=(((*(d->_ib+5))&16)!=0?d->btn|DS4_BUTTON_SQUARE:d->btn&(~DS4_BUTTON_SQUARE));
 		d->btn=(((*(d->_ib+5))&128)!=0?d->btn|DS4_BUTTON_TRIANGLE:d->btn&(~DS4_BUTTON_TRIANGLE));
 		d->btn=(((*(d->_ib+6))&32)!=0?d->btn|DS4_BUTTON_OPTIONS:d->btn&(~DS4_BUTTON_OPTIONS));
 		d->btn=(((*(d->_ib+6))&16)!=0?d->btn|DS4_BUTTON_SHARE:d->btn&(~DS4_BUTTON_SHARE));
