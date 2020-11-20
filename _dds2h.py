@@ -215,7 +215,7 @@ for k in os.listdir("rsrc"):
 					o+=f"}};\n\n\n\nconst RawTexture {k[:-4].upper().replace(' ','_')}_TEX={{\n\t{f},\n\t{w},\n\t{h},\n\t{rb},\n\t{rb*nr},\n\t{k[:-4].upper().replace(' ','_')}_TEX_DATA\n}};\n\n\n\nconst TextureMapData {k[:-4].upper().replace(' ','_')}_TEX_MAP_DATA[]={{\n"
 					with open(f"rsrc\\{k[:-4]}.json","r") as jf:
 						m_dt=json.loads(jf.read())
-						for i,e in enumerate(m_dt["frames"]):
+						for i,e in enumerate(m_dt["frames"].values()):
 							o+=f"\t{{\n\t\t{e['frame']['x']/m_dt['meta']['size']['w']}f,\n\t\t{e['frame']['y']/m_dt['meta']['size']['h']}f,\n\t\t{(e['frame']['x']+e['frame']['w'])/m_dt['meta']['size']['w']}f,\n\t\t{(e['frame']['y']+e['frame']['h'])/m_dt['meta']['size']['h']}f\n\t}},\n"
 						o+=f"}};\n"
 					wf.write(o)
@@ -223,8 +223,8 @@ for k in os.listdir("rsrc"):
 					o=f"#ifndef __{k[:-4].upper().replace(' ','_')}_H__\n#define __{k[:-4].upper().replace(' ','_')}_H__\n#include <common.h>\n#include <texture.h>\n\n\n\nenum {k[:-4].upper().replace(' ','_')}_TEX_IMG{{\n"
 					with open(f"rsrc\\{k[:-4]}.json","r") as jf:
 						m_dt=json.loads(jf.read())
-						for i,e in enumerate(m_dt["frames"]):
-							o+=f"\t{k[:-4].upper().replace(' ','_')}_TEX_IMG_{e['filename'].split('.')[0].upper().replace(' ','_')}={hex(i)},\n"
+						for i,e in enumerate(m_dt["frames"].keys()):
+							o+=f"\t{k[:-4].upper().replace(' ','_')}_TEX_IMG_{e.split('.')[0].upper().replace(' ','_')}={hex(i)},\n"
 						o+=f"}};\n\n\n\nextern const uint8_t {k[:-4].upper().replace(' ','_')}_TEX_DATA[];\n\n\n\nextern const RawTexture {k[:-4].upper().replace(' ','_')}_TEX;\n\n\n\nextern const TextureMapData {k[:-4].upper().replace(' ','_')}_TEX_MAP_DATA[];\n\n\n\n#endif\n"
 					wf.write(o)
 			elif ((px_f&0x40)==0x40):

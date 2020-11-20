@@ -32,10 +32,13 @@ struct _LEVEL{
 	char* nm;
 	uint16_t sx;
 	uint8_t sy;
+	float psx;
+	float psy;
 	float cx;
 	float cy;
 	struct _LEVEL_COLLISION_DATA* c_dt;
 	Player p;
+	float pd_y;
 	uint32_t pdll;
 	ID3D11Buffer* pd_ib;
 	ID3D11Buffer* pd_vb;

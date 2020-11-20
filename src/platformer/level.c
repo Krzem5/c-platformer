@@ -2,6 +2,8 @@
 #include <renderer.h>
 #include <level.h>
 #include <ds4.h>
+#include <texture_2d_vertex.h>
+#include <texture_2d_pixel.h>
 #include <stdio.h>
 
 
@@ -11,13 +13,16 @@
 #define SIZE_SCALE (((float)renderer_ww/TOTAL_X_BLOCKS)<((float)renderer_wh/TOTAL_Y_BLOCKS)?(float)renderer_ww/TOTAL_X_BLOCKS:(float)renderer_wh/TOTAL_Y_BLOCKS)
 #define WIDTH_PAD ((renderer_ww-SIZE_SCALE*TOTAL_X_BLOCKS)/2)
 #define HEIGHT_PAD ((renderer_wh-SIZE_SCALE*TOTAL_Y_BLOCKS)/2)
-#define SIDE_TILE_SIZE 64
+#define SIDE_TILE_SIZE 128
+#define SIDE_TILE_OFFSET 80
+#define SIDE_TILE_MOVE_SPEED 1
 #define COLLISION_DATA_INDEX(c,x,y) (*(c->b_dt+y*c->_w+x))
 #define COLLISION_DATA_XY_FROM_INDEX(c,i,x,y) \
 	do { \
 		x=(float)(i%((c)->_w)); \
 		y=(float)(i/((c)->_w)); \
 	} while(0)
+#define PLAYER_START_X 1.5f
 #define PLAYER_WIDTH 0.8f
 #define WALK_SPEED 2
 #define AIR_WALK_SPEED 0.05f
@@ -33,6 +38,15 @@
 #define DEATH_ANIM_B 0
 #define DEATH_RUMBLE_S 128
 #define DEATH_RUMBLE_F 255
+
+
+
+ID3D11VertexShader* tx_vs=NULL;
+ID3D11PixelShader* tx_ps=NULL;
+ID3D11InputLayout* tx_vl=NULL;
+ID3D11SamplerState* tx_ss=NULL;
+ID3D11ShaderResourceView* tx_sr=NULL;
+ID3D11Buffer* e_cb=NULL;
 
 
 
@@ -97,10 +111,6 @@ bool _separate_aabb(Player p,float a[],float b[]){
 
 
 
-ID3D11Buffer* e_cb=NULL;
-
-
-
 Level load_level(char* nm){
 	size_t ln=0;
 	while (*(nm+ln)!=0){
@@ -140,6 +150,8 @@ Level load_level(char* nm){
 	o->sx=(fgetc(f)&0xff)|((fgetc(f)&0xff)<<8);
 	o->sy=o->sx&0x3f;
 	o->sx>>=6;
+	o->psx=PLAYER_START_X;
+	o->psy=(float)(fgetc(f)&0xff)-0.5f;
 	o->cx=0;
 	o->cy=(float)(o->sy-TOTAL_Y_BLOCKS);
 	if (o->cy<0){
@@ -153,8 +165,8 @@ Level load_level(char* nm){
 		*(o->c_dt->b_dt+i)=0;
 	}
 	o->p=malloc(sizeof(struct _PLAYER));
-	o->p->x=1.5f;
-	o->p->y=(float)(fgetc(f)&0xff)-0.5f;
+	o->p->x=o->psx;
+	o->p->y=o->psy;
 	o->p->vx=0;
 	o->p->vy=0;
 	o->p->d=0;
@@ -222,30 +234,31 @@ Level load_level(char* nm){
 	hr=ID3D11Device_CreateBuffer(renderer_d3_d,&bd,&dt,&(o->p->_vb));
 	assert(hr==S_OK);
 	o->bll=(fgetc(f)&0xff)|((fgetc(f)&0xff)<<8);
-	uint16_t pd_x=((uint16_t)WIDTH_PAD+SIDE_TILE_SIZE-1)/SIDE_TILE_SIZE;
-	uint16_t pd_y=(renderer_wh+SIDE_TILE_SIZE-1)/SIDE_TILE_SIZE;
-	o->pdll=((size_t)WIDTH_PAD+SIDE_TILE_SIZE-1)/SIDE_TILE_SIZE*(renderer_wh+SIDE_TILE_SIZE-1)/SIDE_TILE_SIZE;
+	uint16_t pd_x=((uint16_t)WIDTH_PAD+SIDE_TILE_SIZE-1)/SIDE_TILE_SIZE+1;
+	uint16_t pd_y=(renderer_wh+SIDE_TILE_SIZE-1)/SIDE_TILE_SIZE+1;
+	o->pd_y=0;
+	o->pdll=pd_x*pd_y;
 	uint16_t* pd_il=malloc(o->pdll*6*sizeof(uint16_t));
 	float* pd_vl=malloc(o->pdll*16*sizeof(float));
 	for (uint16_t i=0;i<pd_x;i++){
 		for (uint16_t j=0;j<pd_y;j++){
 			uint32_t k=((uint32_t)j)*pd_x+i;
-			*(pd_vl+k*16)=(float)(i*SIDE_TILE_SIZE);
-			*(pd_vl+k*16+1)=(float)(j*SIDE_TILE_SIZE);
-			*(pd_vl+k*16+2)=TEXTURE_X0(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE_PAD);
-			*(pd_vl+k*16+3)=TEXTURE_Y0(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE_PAD);
-			*(pd_vl+k*16+4)=(float)(i*SIDE_TILE_SIZE+SIDE_TILE_SIZE);
-			*(pd_vl+k*16+5)=(float)(j*SIDE_TILE_SIZE);
-			*(pd_vl+k*16+6)=TEXTURE_X1(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE_PAD);
-			*(pd_vl+k*16+7)=TEXTURE_Y0(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE_PAD);
-			*(pd_vl+k*16+8)=(float)(i*SIDE_TILE_SIZE+SIDE_TILE_SIZE);
-			*(pd_vl+k*16+9)=(float)(j*SIDE_TILE_SIZE+SIDE_TILE_SIZE);
-			*(pd_vl+k*16+10)=TEXTURE_X1(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE_PAD);
-			*(pd_vl+k*16+11)=TEXTURE_Y1(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE_PAD);
-			*(pd_vl+k*16+12)=(float)(i*SIDE_TILE_SIZE);
-			*(pd_vl+k*16+13)=(float)(j*SIDE_TILE_SIZE+SIDE_TILE_SIZE);
-			*(pd_vl+k*16+14)=TEXTURE_X0(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE_PAD);
-			*(pd_vl+k*16+15)=TEXTURE_Y1(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE_PAD);
+			*(pd_vl+k*16)=(float)(i*SIDE_TILE_SIZE)-SIDE_TILE_OFFSET;
+			*(pd_vl+k*16+1)=(float)(j*SIDE_TILE_SIZE)-SIDE_TILE_SIZE;
+			*(pd_vl+k*16+2)=TEXTURE_X0(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE);
+			*(pd_vl+k*16+3)=TEXTURE_Y0(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE);
+			*(pd_vl+k*16+4)=(float)(i*SIDE_TILE_SIZE+SIDE_TILE_SIZE)-SIDE_TILE_OFFSET;
+			*(pd_vl+k*16+5)=(float)(j*SIDE_TILE_SIZE)-SIDE_TILE_SIZE;
+			*(pd_vl+k*16+6)=TEXTURE_X1(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE);
+			*(pd_vl+k*16+7)=TEXTURE_Y0(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE);
+			*(pd_vl+k*16+8)=(float)(i*SIDE_TILE_SIZE+SIDE_TILE_SIZE)-SIDE_TILE_OFFSET;
+			*(pd_vl+k*16+9)=(float)(j*SIDE_TILE_SIZE+SIDE_TILE_SIZE)-SIDE_TILE_SIZE;
+			*(pd_vl+k*16+10)=TEXTURE_X1(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE);
+			*(pd_vl+k*16+11)=TEXTURE_Y1(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE);
+			*(pd_vl+k*16+12)=(float)(i*SIDE_TILE_SIZE)-SIDE_TILE_OFFSET;
+			*(pd_vl+k*16+13)=(float)(j*SIDE_TILE_SIZE+SIDE_TILE_SIZE)-SIDE_TILE_SIZE;
+			*(pd_vl+k*16+14)=TEXTURE_X0(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE);
+			*(pd_vl+k*16+15)=TEXTURE_Y1(TILEMAP_TEX_MAP_DATA,TILEMAP_TEX_IMG_SIDE);
 			*(pd_il+k*6)=k*4;
 			*(pd_il+k*6+1)=k*4+1;
 			*(pd_il+k*6+2)=k*4+2;
@@ -316,7 +329,20 @@ Level load_level(char* nm){
 void update_level(Level l,float dt){
 	#define JOYSTICK_TURN_BUFFOR 32
 	assert(l!=NULL);
-	assert(l->p->d!=2);/*************************************************/
+	if (l->p->d==2){
+		l->p->x=l->psx;
+		l->p->y=l->psy;
+		l->p->vx=0;
+		l->p->vy=0;
+		l->p->dd->r=50;
+		l->p->dd->g=210;
+		l->p->dd->b=140;
+		l->p->_u=false;
+		l->p->_dft=0;
+		l->p->_dtm=0;
+		l->p->_dftm=0;
+		l->p->d=0;
+	}
 	DS4_update_input(l->p->dd);
 	if (l->p->d==1){
 		if (l->p->_dtm==0){
@@ -411,6 +437,10 @@ void update_level(Level l,float dt){
 		}
 	}
 	DS4_update_output(l->p->dd);
+	l->pd_y+=dt*SIDE_TILE_MOVE_SPEED*SIDE_TILE_SIZE;
+	if (l->pd_y>SIDE_TILE_SIZE){
+		l->pd_y-=SIDE_TILE_SIZE;
+	}
 	*l->p->vl=(l->p->x-0.5f)*SIZE_SCALE+WIDTH_PAD;
 	*(l->p->vl+1)=(l->sy-l->p->y-0.5f)*SIZE_SCALE+HEIGHT_PAD;
 	*(l->p->vl+4)=(l->p->x+0.5f)*SIZE_SCALE+WIDTH_PAD;
@@ -458,6 +488,100 @@ void draw_level(Level l){
 	if (e_cb==NULL){
 		e_cb=create_constant_buffer(sizeof(CBufferExtraLayout));
 	}
+	if (tx_vs==NULL||tx_ps==NULL||tx_sr==NULL){
+		assert(tx_vs==NULL);
+		assert(tx_vl==NULL);
+		assert(tx_ps==NULL);
+		assert(tx_sr==NULL);
+		assert(tx_ss==NULL);
+		D3D11_INPUT_ELEMENT_DESC tx_il[]={
+			{
+				"POSITION",
+				0,
+				DXGI_FORMAT_R32G32_FLOAT,
+				0,
+				0,
+				D3D11_INPUT_PER_VERTEX_DATA,
+				0
+			},
+			{
+				"TEXCOORD",
+				0,
+				DXGI_FORMAT_R32G32_FLOAT,
+				0,
+				D3D11_APPEND_ALIGNED_ELEMENT,
+				D3D11_INPUT_PER_VERTEX_DATA,
+				0
+			}
+		};
+		tx_vs=load_vertex_shader(g_texture_2d_vs,sizeof(g_texture_2d_vs),tx_il,sizeof(tx_il)/sizeof(D3D11_INPUT_ELEMENT_DESC),&tx_vl);
+		tx_ps=load_pixel_shader(g_texture_2d_ps,sizeof(g_texture_2d_ps));
+		RawTexture r=TILEMAP_TEX;
+		D3D11_TEXTURE2D_DESC d={
+			r.w,
+			r.h,
+			1,
+			1,
+			r.f,
+			{
+				1,
+				0
+			},
+			D3D11_USAGE_DEFAULT,
+			D3D11_BIND_SHADER_RESOURCE,
+			0,
+			0
+		};
+		D3D11_SUBRESOURCE_DATA sd={
+			r.dt,
+			r.p,
+			r.sp
+		};
+		ID3D11Texture2D* t=NULL;
+		assert(ID3D11Device_CreateTexture2D(renderer_d3_d,&d,&sd,&t)==S_OK);
+		D3D11_SHADER_RESOURCE_VIEW_DESC rvd={
+			r.f,
+			D3D_SRV_DIMENSION_TEXTURE2D,
+			{
+				.Texture2D={
+					0,
+					1
+				}
+			}
+		};
+		ID3D11Resource* tr;
+		ID3D11Texture2D_QueryInterface(t,&IID_ID3D11Resource,(void**)&tr);
+		assert(ID3D11Device_CreateShaderResourceView(renderer_d3_d,tr,&rvd,&tx_sr)==S_OK);
+		IUnknown_Release(tr);
+		D3D11_SAMPLER_DESC ss_d={
+			D3D11_FILTER_MIN_MAG_MIP_POINT,
+			D3D11_TEXTURE_ADDRESS_WRAP,
+			D3D11_TEXTURE_ADDRESS_WRAP,
+			D3D11_TEXTURE_ADDRESS_WRAP,
+			0,
+			1,
+			D3D11_COMPARISON_ALWAYS,
+			{
+				0,
+				0,
+				0,
+				0
+			},
+			0,
+			D3D11_FLOAT32_MAX
+		};
+		assert(ID3D11Device_CreateSamplerState(renderer_d3_d,&ss_d,&tx_ss)==S_OK);
+		SetCursor(LoadCursor(NULL,IDC_ARROW));
+		ShowCursor(false);
+	}
+	float bf[]={0,0,0,0};
+	ID3D11DeviceContext_OMSetBlendState(renderer_d3_dc,renderer_d3_bse,bf,0xffffffff);
+	ID3D11DeviceContext_VSSetShader(renderer_d3_dc,tx_vs,NULL,0);
+	ID3D11DeviceContext_PSSetShader(renderer_d3_dc,tx_ps,NULL,0);
+	ID3D11DeviceContext_OMSetDepthStencilState(renderer_d3_dc,renderer_d3_ddss,1);
+	ID3D11DeviceContext_IASetInputLayout(renderer_d3_dc,tx_vl);
+	ID3D11DeviceContext_PSSetSamplers(renderer_d3_dc,0,1,&tx_ss);
+	ID3D11DeviceContext_PSSetShaderResources(renderer_d3_dc,0,1,&tx_sr);
 	CBufferExtraLayout e_cb_dt={
 		raw_matrix(1,0,0,0,0,1,0,0,0,0,1,0,-l->cx*SIZE_SCALE,-l->cy*SIZE_SCALE,0,1)
 	};
@@ -473,7 +597,7 @@ void draw_level(Level l){
 	ID3D11DeviceContext_IASetVertexBuffers(renderer_d3_dc,0,1,&(l->p->_vb),&st,&off);
 	ID3D11DeviceContext_IASetIndexBuffer(renderer_d3_dc,l->p->_ib,DXGI_FORMAT_R16_UINT,0);
 	ID3D11DeviceContext_DrawIndexed(renderer_d3_dc,6,0,0);
-	e_cb_dt.wm=raw_matrix(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
+	e_cb_dt.wm=raw_matrix(1,0,0,0,0,1,0,0,0,0,1,0,0,l->pd_y,0,1);
 	update_constant_buffer(e_cb,(void*)&e_cb_dt);
 	ID3D11DeviceContext_IASetVertexBuffers(renderer_d3_dc,0,1,&(l->pd_vb),&st,&off);
 	ID3D11DeviceContext_IASetIndexBuffer(renderer_d3_dc,l->pd_ib,DXGI_FORMAT_R16_UINT,0);
