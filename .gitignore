@@ -5,5 +5,4 @@ rsrc/*.dds
 rsrc/*.json
 rsrc/tiles
 rsrc/*.png
-rsrc/*.py
-rsrc/levels/*.py
+*.py
