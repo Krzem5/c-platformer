@@ -465,12 +465,12 @@ void init_renderer(void){
 		0,
 		0,
 		0,
-		L"Fischertechnic Instruction Builder",
+		L"Platformer Game",
 		0
 	};
 	RegisterClassExW(&wc);
 	assert(renderer_w==NULL);
-	renderer_w=CreateWindowExW(wc.style,wc.lpszClassName,L"Fischertechnic Instruction Builder",WS_VISIBLE,CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,NULL,NULL,GetModuleHandle(0),NULL);
+	renderer_w=CreateWindowExW(wc.style,wc.lpszClassName,L"Platformer Game",WS_VISIBLE,CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,NULL,NULL,GetModuleHandle(0),NULL);
 	SetWindowPos(renderer_w,HWND_NOTOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE);
 	SetWindowLongPtr(renderer_w,GWL_STYLE,WS_VISIBLE);
 	SetWindowLongPtr(renderer_w,GWL_EXSTYLE,0);
