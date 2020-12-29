@@ -5,4 +5,6 @@ rsrc/*.dds
 rsrc/*.json
 rsrc/tiles
 rsrc/*.png
+rsrc/*.c
+rsrc/*.h
 *.py
