@@ -1,5 +1,3 @@
-### Github File Push Ignore
-
 build
 rsrc/*.dds
 rsrc/*.json
